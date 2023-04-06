@@ -52,7 +52,7 @@ public struct Waifu2x {
         let height = Int(image.representations[0].pixelsHigh)
         var fullWidth = width
         var fullHeight = height
-        guard var cgimg = image.representations[0].cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+        guard let cgimg = image.representations[0].cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             print("Failed to get CGImage")
             return nil
         }
@@ -86,7 +86,7 @@ public struct Waifu2x {
         
         var hasalpha = cgimg.alphaInfo != CGImageAlphaInfo.none
         debugPrint("With Alpha: \(hasalpha)")
-        var channels = 4
+        let channels = 4
         var alpha: [UInt8]! = nil
         if hasalpha {
             alpha = image.alpha()
