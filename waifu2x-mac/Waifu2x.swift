@@ -45,13 +45,11 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `WaifuResult` 튜플. 실패시 nil 반환
     static public func run(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
-        //static public func run(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> NSImage? {
         guard image != nil else {
             return nil
         }
         guard model != nil else {
             callback("finished")
-            //return image
             return nil
         }
         Waifu2x.interrupt = false
@@ -301,24 +299,6 @@ public struct Waifu2x {
         callback("finished CGImage")
         return cgImage
     }
-    /// `NSImage`를 `CIImage`로 반환
-    /// - Parameters:
-    ///   - image: 입력 이미지. `NSImage`
-    ///   - model: 실행 모델
-    ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
-    /// - Returns: `CIImage`. 실패시 nil 반환
-    static public func runToCIImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CIImage? {
-        guard let waifuResult = self.run(image, model: model, callback) else {
-            return nil
-        }
-        
-        callback("finished CIImage")
-        return CIImage.init(bitmapData: waifuResult.bitmapData as Data,
-                            bytesPerRow: waifuResult.width * waifuResult.channels,
-                            size: CGSize(width: waifuResult.width, height: waifuResult.height),
-                            format: .ARGB8,
-                            colorSpace: waifuResult.space)
-    }
     /// `NSImage`를 `NSImage`로 반환
     /// - Parameters:
     ///   - image: 입력 이미지. `NSImage`
@@ -326,25 +306,11 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `NSImage`. 실패시 nil 반환
     static public func runToImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> NSImage? {
-        guard let waifuResult = self.run(image, model: model, callback),
-                let dataProvider = CGDataProvider(data: waifuResult.bitmapData) else {
+        guard let cgImage = self.runToCGImage(image, model: model, callback) else {
             return nil
         }
-
-        guard let cgImage = CGImage(width: waifuResult.width,
-                                    height: waifuResult.height,
-                                    bitsPerComponent: 8,
-                                    bitsPerPixel: 8 * waifuResult.channels,
-                                    bytesPerRow: waifuResult.width * waifuResult.channels,
-                                    space: waifuResult.space,
-                                    bitmapInfo: waifuResult.bitmapInfo,
-                                    provider: dataProvider,
-                                    decode: nil,
-                                    shouldInterpolate: true,
-                                    intent: CGColorRenderingIntent.defaultIntent) else {
-            return nil
-        }
-        let outImage = NSImage(cgImage: cgImage, size: CGSize(width: waifuResult.width, height: waifuResult.height))
+        let size = CGSize(width: cgImage.width, height: cgImage.height)
+        let outImage = NSImage(cgImage: cgImage, size: size)
         callback("finished NSImage")
         return outImage
     }
