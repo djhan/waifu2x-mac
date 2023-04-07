@@ -128,7 +128,7 @@ guard model != nil else {
     exit(EX_USAGE)
 }
 
-guard let outimg = Waifu2x.run(inimg, model: model) else {
+guard let outimg = Waifu2x.runToImage(inimg, model: model) else {
     fputs("Failed to run model!\n", __stderrp)
     exit(EX_SOFTWARE)
 }

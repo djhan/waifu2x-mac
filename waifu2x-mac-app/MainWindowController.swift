@@ -89,7 +89,7 @@ class MainWindowController: NSWindowController, NSToolbarItemValidation {
         
         let start = Date()
         background.async {
-            guard let outImage = Waifu2x.run(img, model: Model(rawValue: modelName)!) else {
+            guard let outImage = Waifu2x.runToImage(img, model: Model(rawValue: modelName)!) else {
                 return
             }
             DispatchQueue.main.async {
