@@ -58,6 +58,7 @@
 		8AC63CC420185D7D001498E0 /* waifu2x_mac.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 8AC63C232018462E001498E0 /* waifu2x_mac.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		8AF963CE24140F060081748C /* CommandLineKit in Frameworks */ = {isa = PBXBuildFile; productRef = 8AF963CD24140F060081748C /* CommandLineKit */; };
 		EEBF02BA29DEE92600508338 /* NSImage+Expand.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEBF02B929DEE92600508338 /* NSImage+Expand.swift */; };
+		EEEDFF1329E3831500833B58 /* CGImage+Alpha.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEEDFF1229E3831500833B58 /* CGImage+Alpha.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -177,6 +178,7 @@
 		8AC63CC9201878FA001498E0 /* NSImage+PNG.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSImage+PNG.swift"; sourceTree = "<group>"; };
 		8AC63CCB201879BF001498E0 /* waifu2x-mac-app.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "waifu2x-mac-app.entitlements"; sourceTree = "<group>"; };
 		EEBF02B929DEE92600508338 /* NSImage+Expand.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSImage+Expand.swift"; sourceTree = "<group>"; };
+		EEEDFF1229E3831500833B58 /* CGImage+Alpha.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "CGImage+Alpha.swift"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -265,6 +267,7 @@
 				8AC63C84201848FC001498E0 /* NSImage+Crop.swift */,
 				EEBF02B929DEE92600508338 /* NSImage+Expand.swift */,
 				8AC63C8A201848FD001498E0 /* CGImage+Expand.swift */,
+				EEEDFF1229E3831500833B58 /* CGImage+Alpha.swift */,
 				8AC63CC9201878FA001498E0 /* NSImage+PNG.swift */,
 				8AC63C262018462E001498E0 /* waifu2x_mac.h */,
 				8AC63C272018462E001498E0 /* Info.plist */,
@@ -551,6 +554,7 @@
 				8AC63C90201848FD001498E0 /* NSImage+Crop.swift in Sources */,
 				8AC63CB020184902001498E0 /* anime_noise1_model.mlmodel in Sources */,
 				8AC63CB520184902001498E0 /* up_anime_noise0_scale2x_model.mlmodel in Sources */,
+				EEEDFF1329E3831500833B58 /* CGImage+Alpha.swift in Sources */,
 				8AC63CAF20184902001498E0 /* anime_noise2_model.mlmodel in Sources */,
 				8AC63CB420184902001498E0 /* up_photo_scale2x_model.mlmodel in Sources */,
 				8AC63C94201848FD001498E0 /* Queue.swift in Sources */,

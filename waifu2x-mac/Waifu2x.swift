@@ -44,7 +44,7 @@ public struct Waifu2x {
     ///   - model: 실행 모델
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `WaifuResult` 튜플. 실패시 nil 반환
-    static public func run(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
+    static private func run(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
         guard image != nil else {
             return nil
         }
@@ -52,6 +52,21 @@ public struct Waifu2x {
             callback("finished")
             return nil
         }
+        
+        guard let cgimage = image.representations[0].cgImage(forProposedRect: nil, context: nil, hints: nil) else {
+            print("Failed to get CGImage")
+            return nil
+        }
+        return self.run(cgimage, model: model)
+    }
+        
+    /// `CGImage`를 `WaifuResult` 튜플로 반환
+    /// - Parameters:
+    ///   - cgimage: 입력 이미지. `CGImage`
+    ///   - model: 실행 모델
+    ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
+    /// - Returns: `WaifuResult` 튜플. 실패시 nil 반환
+    static private func run(_ cgimage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
         Waifu2x.interrupt = false
         var out_scale: Int
         switch model! {
@@ -62,16 +77,13 @@ public struct Waifu2x {
             Waifu2x.block_size = 142
             out_scale = 2
         }
-        let width = Int(image.representations[0].pixelsWide)
-        let height = Int(image.representations[0].pixelsHigh)
+
+        let width = cgimage.width
+        let height = cgimage.height
         var fullWidth = width
         var fullHeight = height
-        guard let cgimg = image.representations[0].cgImage(forProposedRect: nil, context: nil, hints: nil) else {
-            print("Failed to get CGImage")
-            return nil
-        }
-        var fullCG = cgimg
-        
+        var fullCG: CGImage = cgimage
+
         // If image is too small, expand it
         if width < block_size || height < block_size {
             if width < block_size {
@@ -80,30 +92,30 @@ public struct Waifu2x {
             if height < block_size {
                 fullHeight = block_size
             }
-            var bitmapInfo = cgimg.bitmapInfo.rawValue
+            var bitmapInfo = cgimage.bitmapInfo.rawValue
             if bitmapInfo & CGBitmapInfo.alphaInfoMask.rawValue == CGImageAlphaInfo.first.rawValue {
                 bitmapInfo = bitmapInfo & ~CGBitmapInfo.alphaInfoMask.rawValue | CGImageAlphaInfo.premultipliedFirst.rawValue
             } else if bitmapInfo & CGBitmapInfo.alphaInfoMask.rawValue == CGImageAlphaInfo.last.rawValue {
                 bitmapInfo = bitmapInfo & ~CGBitmapInfo.alphaInfoMask.rawValue | CGImageAlphaInfo.premultipliedLast.rawValue
             }
-            let context = CGContext(data: nil, width: fullWidth, height: fullHeight, bitsPerComponent: cgimg.bitsPerComponent, bytesPerRow: cgimg.bytesPerRow / width * fullWidth, space: cgimg.colorSpace ?? CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmapInfo)
+            let context = CGContext(data: nil, width: fullWidth, height: fullHeight, bitsPerComponent: cgimage.bitsPerComponent, bytesPerRow: cgimage.bytesPerRow / width * fullWidth, space: cgimage.colorSpace ?? CGColorSpaceCreateDeviceRGB(), bitmapInfo: bitmapInfo)
             var y = fullHeight - height
             if y < 0 {
                 y = 0
             }
-            context?.draw(cgimg, in: CGRect(x: 0, y: y, width: width, height: height))
+            context?.draw(cgimage, in: CGRect(x: 0, y: y, width: width, height: height))
             guard let contextCG = context?.makeImage() else {
                 return nil
             }
             fullCG = contextCG
         }
         
-        var hasalpha = cgimg.alphaInfo != CGImageAlphaInfo.none
+        var hasalpha = cgimage.alphaInfo != CGImageAlphaInfo.none
         debugPrint("With Alpha: \(hasalpha)")
         let channels = 4
         var alpha: [UInt8]! = nil
         if hasalpha {
-            alpha = image.alpha()
+            alpha = cgimage.alpha()
             var ralpha = false
             // Check if it really has alpha
             for a in alpha {
@@ -277,7 +289,7 @@ public struct Waifu2x {
     ///   - model: 실행 모델
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `CGImage`. 실패시 nil 반환
-    static public func runToCGImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
+    static private func runImageToCGImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
         guard let waifuResult = self.run(image, model: model, callback),
                 let dataProvider = CGDataProvider(data: waifuResult.bitmapData) else {
             return nil
@@ -299,6 +311,35 @@ public struct Waifu2x {
         callback("finished CGImage")
         return cgImage
     }
+    /// `CGImage`를 `CGImage`로 반환
+    /// - Parameters:
+    ///   - cgimage: 입력 이미지. `CGImage`
+    ///   - model: 실행 모델
+    ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
+    /// - Returns: `CGImage`. 실패시 nil 반환
+    static private func runCGImageToCGImage(_ cgImage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
+        guard let waifuResult = self.run(cgImage, model: model, callback),
+                let dataProvider = CGDataProvider(data: waifuResult.bitmapData) else {
+            return nil
+        }
+
+        guard let cgImage = CGImage(width: waifuResult.width,
+                                    height: waifuResult.height,
+                                    bitsPerComponent: 8,
+                                    bitsPerPixel: 8 * waifuResult.channels,
+                                    bytesPerRow: waifuResult.width * waifuResult.channels,
+                                    space: waifuResult.space,
+                                    bitmapInfo: waifuResult.bitmapInfo,
+                                    provider: dataProvider,
+                                    decode: nil,
+                                    shouldInterpolate: true,
+                                    intent: CGColorRenderingIntent.defaultIntent) else {
+            return nil
+        }
+        callback("finished CGImage")
+        return cgImage
+    }
+
     /// `NSImage`를 `NSImage`로 반환
     /// - Parameters:
     ///   - image: 입력 이미지. `NSImage`
@@ -306,13 +347,25 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `NSImage`. 실패시 nil 반환
     static public func runToImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> NSImage? {
-        guard let cgImage = self.runToCGImage(image, model: model, callback) else {
+        guard let cgImage = self.runImageToCGImage(image, model: model, callback) else {
             return nil
         }
         let size = CGSize(width: cgImage.width, height: cgImage.height)
         let outImage = NSImage(cgImage: cgImage, size: size)
         callback("finished NSImage")
         return outImage
+    }
+    /// `CGImage`를 `CGImage`로 반환
+    /// - Parameters:
+    ///   - image: 입력 이미지. `CGImage`
+    ///   - model: 실행 모델
+    ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
+    /// - Returns: `NSImage`. 실패시 nil 반환
+    static public func runToCGImage(_ cgimage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
+        guard let cgImage = self.runCGImageToCGImage(cgimage, model: model, callback) else {
+            return nil
+        }
+        return cgImage
     }
 }
 
