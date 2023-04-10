@@ -347,11 +347,11 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `NSImage`. 실패시 nil 반환
     static public func runToImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> NSImage? {
-        guard let cgImage = self.runImageToCGImage(image, model: model, callback) else {
+        guard let resultCGImage = self.runImageToCGImage(image, model: model, callback) else {
             return nil
         }
-        let size = CGSize(width: cgImage.width, height: cgImage.height)
-        let outImage = NSImage(cgImage: cgImage, size: size)
+        let size = CGSize(width: resultCGImage.width, height: resultCGImage.height)
+        let outImage = NSImage(cgImage: resultCGImage, size: size)
         callback("finished NSImage")
         return outImage
     }
@@ -362,10 +362,25 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `NSImage`. 실패시 nil 반환
     static public func runToCGImage(_ cgimage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
-        guard let cgImage = self.runCGImageToCGImage(cgimage, model: model, callback) else {
+        guard let resultCGImage = self.runCGImageToCGImage(cgimage, model: model, callback) else {
             return nil
         }
-        return cgImage
+        return resultCGImage
+    }
+    /// `CIImage`를 `CIImage`로 반환
+    /// - Important: 속도면에서 상당히 느릴 수 있다. `CIContext` 는 낭비를 막기 위해 외부에서 지정해서 사용하도록 한다
+    /// - Parameters:
+    ///   - image: 입력 이미지. `CIImage`
+    ///   - cicontext: CIContext
+    ///   - model: 실행 모델
+    ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
+    /// - Returns: `NSImage`. 실패시 nil 반환
+    static public func runToCIImage(_ ciimage: CIImage!, cicontext: CIContext, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CIImage? {
+        guard let cgimage = cicontext.createCGImage(ciimage, from: ciimage.extent),
+            let resultCGImage = self.runCGImageToCGImage(cgimage, model: model, callback) else {
+            return nil
+        }
+        return CIImage(cgImage: resultCGImage)
     }
 }
 
