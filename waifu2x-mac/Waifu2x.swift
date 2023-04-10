@@ -262,12 +262,6 @@ public struct Waifu2x {
         guard let cfbuffer = CFDataCreate(nil, imgData, out_width * out_height * channels) else {
             return nil
         }
-        /*
-        guard let cfbuffer = CFDataCreate(nil, imgData, out_width * out_height * channels),
-              let dataProvider = CGDataProvider(data: cfbuffer) else {
-            return nil
-        }
-        */
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         var bitmapInfo = CGBitmapInfo.byteOrder32Big.rawValue
         if hasalpha {
@@ -290,26 +284,10 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `CGImage`. 실패시 nil 반환
     static private func runImageToCGImage(_ image: NSImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> CGImage? {
-        guard let waifuResult = self.run(image, model: model, callback),
-                let dataProvider = CGDataProvider(data: waifuResult.bitmapData) else {
+        guard let cgImage = image.cgImage(forProposedRect: nil, context: nil, hints: nil) else {
             return nil
         }
-
-        guard let cgImage = CGImage(width: waifuResult.width,
-                                    height: waifuResult.height,
-                                    bitsPerComponent: 8,
-                                    bitsPerPixel: 8 * waifuResult.channels,
-                                    bytesPerRow: waifuResult.width * waifuResult.channels,
-                                    space: waifuResult.space,
-                                    bitmapInfo: waifuResult.bitmapInfo,
-                                    provider: dataProvider,
-                                    decode: nil,
-                                    shouldInterpolate: true,
-                                    intent: CGColorRenderingIntent.defaultIntent) else {
-            return nil
-        }
-        callback("finished CGImage")
-        return cgImage
+        return self.runCGImageToCGImage(cgImage, model: model, callback)
     }
     /// `CGImage`를 `CGImage`로 반환
     /// - Parameters:
@@ -340,7 +318,7 @@ public struct Waifu2x {
         return cgImage
     }
 
-    /// `NSImage`를 `NSImage`로 반환
+    /// `NSImage`를 `NSImage`로 반환하는 메쏘드
     /// - Parameters:
     ///   - image: 입력 이미지. `NSImage`
     ///   - model: 실행 모델
@@ -355,7 +333,8 @@ public struct Waifu2x {
         callback("finished NSImage")
         return outImage
     }
-    /// `CGImage`를 `CGImage`로 반환
+    
+    /// `CGImage`를 `CGImage`로 반환하는 메쏘드
     /// - Parameters:
     ///   - image: 입력 이미지. `CGImage`
     ///   - model: 실행 모델
@@ -367,7 +346,7 @@ public struct Waifu2x {
         }
         return resultCGImage
     }
-    /// `CIImage`를 `CIImage`로 반환
+    /// `CIImage`를 `CIImage`로 반환하는 메쏘드
     /// - Important: 속도면에서 상당히 느릴 수 있다. `CIContext` 는 낭비를 막기 위해 외부에서 지정해서 사용하도록 한다
     /// - Parameters:
     ///   - image: 입력 이미지. `CIImage`
