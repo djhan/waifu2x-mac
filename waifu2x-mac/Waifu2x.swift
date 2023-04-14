@@ -27,6 +27,9 @@ public struct Waifu2x {
     /// The difference between output and input block size
     static let shrink_size = 7
     
+    /// 내부 처리용 락
+    static let lock = NSLock()
+    
     /// Do not exactly know its function
     /// However it can on average improve PSNR by 0.09
     /// https://github.com/nagadomi/waifu2x/commit/797b45ae23665a1c5e3c481c018e48e6f0d0e383
@@ -67,6 +70,13 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `WaifuResult` 튜플. 실패시 nil 반환
     static private func run(_ cgimage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
+        // 락을 건다
+        self.lock.lock()
+        // 종료시 락 해제
+        defer {
+            self.lock.unlock()
+        }
+        
         Waifu2x.interrupt = false
         var out_scale: Int
         switch model! {
