@@ -70,10 +70,12 @@ public struct Waifu2x {
     ///   - callback: 처리 실패/성공 결과를 반환하는 콜백
     /// - Returns: `WaifuResult` 튜플. 실패시 nil 반환
     static private func run(_ cgimage: CGImage!, model: Model!, _ callback: @escaping (String) -> Void = { _ in }) -> WaifuResult? {
+        print("Waifu2X>run(): Lock")
         // 락을 건다
         self.lock.lock()
         // 종료시 락 해제
         defer {
+            print("Waifu2X>run(): Unlock")
             self.lock.unlock()
         }
         
@@ -81,13 +83,14 @@ public struct Waifu2x {
         var out_scale: Int
         switch model! {
         case .anime_noise0, .anime_noise1, .anime_noise2, .anime_noise3, .photo_noise0, .photo_noise1, .photo_noise2, .photo_noise3:
-            Waifu2x.block_size = 128
+            self.block_size = 128
             out_scale = 1
         default:
-            Waifu2x.block_size = 142
+            self.block_size = 142
             out_scale = 2
         }
 
+        print("scale = \(out_scale), block size = \(self.block_size)")
         let width = cgimage.width
         let height = cgimage.height
         var fullWidth = width
@@ -95,12 +98,12 @@ public struct Waifu2x {
         var fullCG: CGImage = cgimage
 
         // If image is too small, expand it
-        if width < block_size || height < block_size {
-            if width < block_size {
-                fullWidth = block_size
+        if width < self.block_size || height < self.block_size {
+            if width < self.block_size {
+                fullWidth = self.block_size
             }
-            if height < block_size {
-                fullHeight = block_size
+            if height < self.block_size {
+                fullHeight = self.block_size
             }
             var bitmapInfo = cgimage.bitmapInfo.rawValue
             if bitmapInfo & CGBitmapInfo.alphaInfoMask.rawValue == CGImageAlphaInfo.first.rawValue {
@@ -120,6 +123,9 @@ public struct Waifu2x {
             fullCG = contextCG
         }
         
+        print("w/h = \(width)/\(height)")
+        print("full w/h = \(fullWidth)/\(fullHeight)")
+
         var hasalpha = cgimage.alphaInfo != CGImageAlphaInfo.none
         debugPrint("With Alpha: \(hasalpha)")
         let channels = 4
@@ -143,7 +149,7 @@ public struct Waifu2x {
         let out_height = height * out_scale
         let out_fullWidth = fullWidth * out_scale
         let out_fullHeight = fullHeight * out_scale
-        let out_block_size = Waifu2x.block_size * out_scale
+        let out_block_size = self.block_size * out_scale
         let rects = fullCG.getCropRects()
         // Prepare for output pipeline
         // Merge arrays into one array
@@ -159,6 +165,9 @@ public struct Waifu2x {
         }
         let bufferSize = out_block_size * out_block_size * 3
         let imgData = UnsafeMutablePointer<UInt8>.allocate(capacity: out_width * out_height * channels)
+        
+        print("out w/h = \(out_width)/\(out_height) :: channels = \(channels)")
+        
         defer {
             imgData.deallocate()
         }
@@ -207,6 +216,9 @@ public struct Waifu2x {
             var dest_y: Int
             var src_index: Int
             var dest_index: Int
+            
+            print("imgData size =\(out_width * out_height * channels) :: dataPointer size = \(bufferSize) :: out block size = \(out_block_size)")
+            
             for channel in 0..<3 {
                 for src_y in 0..<out_block_size {
                     for src_x in 0..<out_block_size {
@@ -217,6 +229,15 @@ public struct Waifu2x {
                         }
                         src_index = src_y * out_block_size + src_x + out_block_size * out_block_size * channel
                         dest_index = (dest_y * out_width + dest_x) * channels + channel
+                        
+                        if src_index > bufferSize {
+                            continue
+                        }
+                        if dest_index > out_width * out_height * channels {
+                            //print("dest index = \(dest_index)")
+                            continue
+                        }
+                        
                         imgData[dest_index] = UInt8(normalize(dataPointer[src_index]))
                     }
                 }
@@ -240,19 +261,46 @@ public struct Waifu2x {
             let multi = try! MLMultiArray(shape: [3, NSNumber(value: Waifu2x.block_size + 2 * Waifu2x.shrink_size), NSNumber(value: Waifu2x.block_size + 2 * Waifu2x.shrink_size)], dataType: .float32)
             var x_new: Int
             var y_new: Int
+            print("multi count =\(multi.count) :: expanded = \(expanded.count)")
             for y_exp in y..<(y + Waifu2x.block_size + 2 * Waifu2x.shrink_size) {
                 for x_exp in x..<(x + Waifu2x.block_size + 2 * Waifu2x.shrink_size) {
                     x_new = x_exp - x
                     y_new = y_exp - y
                     var dest = y_new * (Waifu2x.block_size + 2 * Waifu2x.shrink_size) + x_new
+                    
+                    if dest > multi.count {
+                        continue
+                    }
+                    if y_exp * expwidth + x_exp > expanded.count {
+                        continue
+                    }
+                    
                     multi[dest] = NSNumber(value: expanded[y_exp * expwidth + x_exp])
                     dest = y_new * (Waifu2x.block_size + 2 * Waifu2x.shrink_size) + x_new + (block_size + 2 * Waifu2x.shrink_size) * (block_size + 2 * Waifu2x.shrink_size)
+                    
+                    if dest > multi.count {
+                        continue
+                    }
+                    if y_exp * expwidth + x_exp + expwidth * expheight > expanded.count {
+                        continue
+                    }
+
                     multi[dest] = NSNumber(value: expanded[y_exp * expwidth + x_exp + expwidth * expheight])
                     dest = y_new * (Waifu2x.block_size + 2 * Waifu2x.shrink_size) + x_new + (block_size + 2 * Waifu2x.shrink_size) * (block_size + 2 * Waifu2x.shrink_size) * 2
+                    
+                    if dest > multi.count {
+                        continue
+                    }
+                    if y_exp * expwidth + x_exp + expwidth * expheight * 2 > expanded.count {
+                        //print("value count = \(y_exp * expwidth + x_exp + expwidth * expheight * 2)")
+                        continue
+                    }
+                    
                     multi[dest] = NSNumber(value: expanded[y_exp * expwidth + x_exp + expwidth * expheight * 2])
                 }
             }
-            model_pipeline.appendObject(multi)
+            Waifu2x.model_pipeline.appendObject(multi)
+            print("in pipeline 종료")
         })
         for i in 0..<rects.count {
             Waifu2x.in_pipeline.appendObject(rects[i])
@@ -268,6 +316,7 @@ public struct Waifu2x {
         if Waifu2x.interrupt {
             return nil
         }
+        print("출력물 작업")
         callback("generate_output")
         guard let cfbuffer = CFDataCreate(nil, imgData, out_width * out_height * channels) else {
             return nil
